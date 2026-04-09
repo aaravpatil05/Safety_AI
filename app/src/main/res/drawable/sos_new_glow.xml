@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- The tight neon shadow/glow wrapping closely around the button -->
+    <item android:top="16dp" android:bottom="16dp" android:left="16dp" android:right="16dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="150dp"
+                android:startColor="#99D32F2F"
+                android:endColor="#00FF0000" />
+        </shape>
+    </item>
+    
+    <!-- The physical massive SOS Button -->
+    <item android:top="36dp" android:bottom="36dp" android:left="36dp" android:right="36dp">
+        <shape android:shape="oval">
+            <!-- A deep, luxurious dark red metallic-style angled gradient -->
+            <gradient
+                android:type="linear"
+                android:angle="315"
+                android:startColor="#D32F2F"
+                android:centerColor="#B71C1C"
+                android:endColor="#8B0000" />
+            
+            <!-- Sharp crimson outer ring to define the physical boundary -->
+            <stroke
+                android:width="4dp"
+                android:color="#FF5252" />
+        </shape>
+    </item>
+    
+</layer-list>
