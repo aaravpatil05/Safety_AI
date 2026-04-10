@@ -38,3 +38,10 @@ obj/
 backend/data/*.3gp
 backend/data/*.json
 backend/__pycache__/
+
+# Logs and temp files
+*.log
+backend/*.log
+backend/*.txt
+data/
+SafetyAI_Presentation_Final.zip

@@ -29,6 +29,8 @@ public class HomeFragment extends Fragment {
     private TextView tvStatus;
     private View bottomActionButtons;
     private View trackerContainer;
+    private TextView tvServerStatus;
+    private View statusDot;
     
     private TextView trStep1, trStep2, trStep3, trStep4;
     private android.os.Handler handler = new android.os.Handler();
@@ -43,6 +45,8 @@ public class HomeFragment extends Fragment {
         btnSos = view.findViewById(R.id.btnSos);
         tvSosText = view.findViewById(R.id.tvSosText);
         tvStatus = view.findViewById(R.id.tvStatus);
+        tvServerStatus = view.findViewById(R.id.tvServerStatus);
+        statusDot = view.findViewById(R.id.statusDot);
         bottomActionButtons = view.findViewById(R.id.bottomActionButtons);
         trackerContainer = view.findViewById(R.id.trackerContainer);
         
@@ -51,8 +55,8 @@ public class HomeFragment extends Fragment {
         trStep3 = view.findViewById(R.id.trStep3);
         trStep4 = view.findViewById(R.id.trStep4);
         
-        TextView btnShareLocation = view.findViewById(R.id.btnShareLocation);
-        TextView btnCallEmergency = view.findViewById(R.id.btnCallEmergency);
+        View btnShareLocation = view.findViewById(R.id.btnShareLocation);
+        View btnCallEmergency = view.findViewById(R.id.btnCallEmergency);
         View btnHomeSettings = view.findViewById(R.id.btnHomeSettings);
         View btnHomeNotifications = view.findViewById(R.id.btnHomeNotifications);
         View btnHomeFeatures = view.findViewById(R.id.btnHomeFeatures);
@@ -266,5 +270,18 @@ public class HomeFragment extends Fragment {
                 trStep4.setTextColor(Color.parseColor("#FFCA28"));
             }, 1000);
         }, 3400);
+    }
+
+    public void updateServerStatus(boolean isOnline) {
+        if (tvServerStatus == null || getContext() == null) return;
+        getActivity().runOnUiThread(() -> {
+            if (isOnline) {
+                tvServerStatus.setText("Online");
+                statusDot.setBackgroundResource(R.drawable.dot_green);
+            } else {
+                tvServerStatus.setText("Offline");
+                statusDot.setBackgroundResource(R.drawable.dot_red);
+            }
+        });
     }
 }

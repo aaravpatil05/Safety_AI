@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP (cleartext) traffic to all destinations.
+         This is needed so the Android app can upload to the local Python
+         backend server over Wi-Fi or hotspot (which uses http, not https).
+         The Serveo evidence link is still HTTPS so external traffic is secure. -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

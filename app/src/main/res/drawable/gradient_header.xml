@@ -5,4 +5,7 @@
         android:startColor="@color/purple_gradient_start"
         android:endColor="@color/orange_gradient_end"
         android:angle="0" />
+    <corners
+        android:bottomLeftRadius="28dp"
+        android:bottomRightRadius="28dp" />
 </shape>

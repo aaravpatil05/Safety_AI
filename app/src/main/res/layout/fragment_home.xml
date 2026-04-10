@@ -5,38 +5,56 @@
     android:layout_height="match_parent"
     android:background="@color/home_bg">
 
+    <!-- Header bar with rounded bottom -->
     <LinearLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:background="@color/header_red"
+        android:layout_height="72dp"
+        android:background="@drawable/gradient_header"
         android:gravity="bottom|center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="16dp"
-        android:paddingBottom="12dp"
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="14dp"
         app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Features Menu Button -->
-        <ImageView
-            android:id="@+id/btnHomeFeatures"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true"
-            android:src="@drawable/ic_menu_features"
-            app:tint="@color/bg_light" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="start|center_vertical"
+                android:text="HOME"
+                android:textColor="@color/bg_light"
+                android:textSize="26sp"
+                android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="HOME"
-            android:textColor="@color/bg_light"
-            android:textSize="32sp"
-            android:textStyle="bold" />
+            <!-- Server Connection Status -->
+            <LinearLayout
+                android:id="@+id/serverStatusLayout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginEnd="12dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/status_pill_bg_small">
+
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_red" />
+
+                <TextView
+                    android:id="@+id/tvServerStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="Offline"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -45,58 +63,63 @@
 
             <ImageView
                 android:id="@+id/btnHomeSettings"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginEnd="16dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="12dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
+                android:padding="4dp"
                 android:src="@drawable/ic_settings_outline"
                 app:tint="@color/bg_light" />
 
             <ImageView
                 android:id="@+id/btnHomeNotifications"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
+                android:padding="4dp"
                 android:src="@drawable/ic_bell_outline"
                 app:tint="@color/bg_light" />
         </LinearLayout>
     </LinearLayout>
 
+    <!-- Status pill -->
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="64dp"
+        android:layout_marginTop="28dp"
+        android:background="@drawable/status_pill_bg"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="8dp"
         android:text="Status: You are Safe 🟢"
         android:textColor="?android:attr/textColorPrimary"
-        android:textSize="18sp"
+        android:textSize="15sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/header" />
 
+    <!-- SOS Button -->
     <FrameLayout
         android:id="@+id/btnSos"
-        android:layout_width="320dp"
-        android:layout_height="320dp"
-        android:layout_marginTop="32dp"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_marginTop="24dp"
         android:clickable="true"
         android:focusable="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvStatus">
 
-        <!-- Unified Gradient Glow Background -->
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@drawable/sos_new_glow" />
 
-        <!-- SOS Core Text -->
         <TextView
             android:id="@+id/tvSosText"
             android:layout_width="wrap_content"
@@ -104,88 +127,123 @@
             android:layout_gravity="center"
             android:text="SOS"
             android:textColor="@color/bg_light"
-            android:textSize="58sp"
+            android:textSize="56sp"
+            android:letterSpacing="0.06"
             android:textStyle="bold" />
     </FrameLayout>
 
-    <LinearLayout
-        android:id="@+id/aiPill"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnSos">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="AI Monitoring : "
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="ON"
-            android:textColor="#4CAF50"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
+    <!-- Bottom content container: AI pill + action buttons + features (collapsed during active SOS) -->
     <LinearLayout
         android:id="@+id/bottomActionButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
-        android:gravity="center"
-        android:orientation="horizontal"
-        app:layout_constraintTop_toBottomOf="@id/aiPill">
+        android:layout_marginTop="20dp"
+        android:orientation="vertical"
+        android:animateLayoutChanges="true"
+        app:layout_constraintTop_toBottomOf="@id/btnSos">
 
-        <TextView
-            android:id="@+id/btnShareLocation"
+        <!-- AI Status pill -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/aiPill"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@color/btn_bg"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
-            android:text="Share Location"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:layout_gravity="center"
+            app:cardBackgroundColor="@color/pill_bg"
+            app:cardCornerRadius="40dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
 
-        <View
-            android:layout_width="24dp"
-            android:layout_height="0dp" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="10dp">
 
-        <TextView
-            android:id="@+id/btnCallEmergency"
-            android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AI Monitoring : "
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ON"
+                    android:textColor="#2E7D32"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Action Buttons Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/btn_bg"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
-            android:text="📞 Call Emergency"
-            android:textColor="?android:attr/textColorPrimary"
+            android:layout_marginTop="20dp"
+            android:layout_marginHorizontal="24dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnShareLocation"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="📍 Share Location"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="80dp"
+                app:strokeColor="@color/header_red"
+                app:strokeWidth="2dp"
+                android:textColor="@color/header_red" />
+
+            <View android:layout_width="16dp" android:layout_height="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCallEmergency"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="📞 Emergency"
+                android:textColor="@color/bg_light"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/header_red"
+                app:cornerRadius="80dp" />
+        </LinearLayout>
+
+        <!-- Features shortcut -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHomeFeatures"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:layout_marginTop="4dp"
+            android:text="⚡ Safety Features"
+            android:textColor="@color/header_red"
             android:textSize="14sp"
-            android:textStyle="bold" />
+            app:cornerRadius="80dp" />
+
     </LinearLayout>
 
-    <!-- LIVE SOS TRACKER UI (Hidden by default) -->
+    <!-- LIVE SOS TRACKER (replaces bottom content during active SOS) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/trackerContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:layout_marginHorizontal="24dp"
+        android:layout_marginHorizontal="20dp"
         android:visibility="gone"
-        app:cardBackgroundColor="#CC111111"
+        app:cardBackgroundColor="#EE1A1A1A"
         app:strokeColor="#77F44336"
         app:strokeWidth="1dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="12dp"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="16dp"
         app:layout_constraintTop_toBottomOf="@id/btnSos">
 
         <LinearLayout
@@ -193,23 +251,26 @@
             android:layout_height="wrap_content"
             android:animateLayoutChanges="true"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="24dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="20dp"
+                android:background="#33F44336"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="6dp"
                 android:text="LIVE EMERGENCY STATUS"
-                android:textColor="#F44336"
-                android:textSize="14sp"
+                android:textColor="#FF5252"
+                android:textSize="12sp"
+                android:letterSpacing="0.1"
                 android:textStyle="bold" />
 
-            <TextView android:id="@+id/trStep1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Acquiring precise GPS coordinates..." android:textColor="#B0BEC5" android:textSize="13sp" android:layout_marginBottom="12dp"/>
-            <TextView android:id="@+id/trStep2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Alerting Emergency Contacts..." android:textColor="#B0BEC5" android:textSize="13sp" android:layout_marginBottom="12dp"/>
-            <TextView android:id="@+id/trStep3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Transmitting coordinates to 112..." android:textColor="#B0BEC5" android:textSize="13sp" android:layout_marginBottom="12dp"/>
-            <TextView android:id="@+id/trStep4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Securely recording audio evidence..." android:textColor="#B0BEC5" android:textSize="13sp"/>
-
+            <TextView android:id="@+id/trStep1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Acquiring precise GPS coordinates..." android:textColor="#B0BEC5" android:textSize="14sp" android:layout_marginBottom="14dp"/>
+            <TextView android:id="@+id/trStep2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Alerting Emergency Contacts..." android:textColor="#B0BEC5" android:textSize="14sp" android:layout_marginBottom="14dp"/>
+            <TextView android:id="@+id/trStep3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Transmitting coordinates to 112..." android:textColor="#B0BEC5" android:textSize="14sp" android:layout_marginBottom="14dp"/>
+            <TextView android:id="@+id/trStep4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏳ Securely recording audio evidence..." android:textColor="#B0BEC5" android:textSize="14sp"/>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

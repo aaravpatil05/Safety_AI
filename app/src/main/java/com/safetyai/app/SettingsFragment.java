@@ -101,6 +101,20 @@ public class SettingsFragment extends Fragment {
             startActivity(intent);
         });
 
+        // Network Override Handling
+        com.google.android.material.textfield.TextInputEditText etManualIp = view.findViewById(R.id.etManualIp);
+        etManualIp.setText(prefs.getString("manual_server_ip", ""));
+        
+        etManualIp.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(android.text.Editable s) {
+                prefs.edit().putString("manual_server_ip", s.toString()).apply();
+                MainActivity activity = (MainActivity) getActivity();
+                if (activity != null) activity.refreshBackendConnection();
+            }
+        });
+
         return view;
     }
 }

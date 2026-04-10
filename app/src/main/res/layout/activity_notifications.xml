@@ -12,7 +12,8 @@
         android:background="@drawable/gradient_header"
         android:gravity="bottom|center_horizontal"
         android:orientation="horizontal"
-        android:padding="16dp"
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="16dp"
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView

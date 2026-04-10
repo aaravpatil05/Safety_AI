@@ -9,9 +9,12 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.location.LocationManager;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import android.media.AudioManager;
 import android.media.MediaRecorder;
 import android.media.ToneGenerator;
@@ -37,6 +40,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import org.json.JSONObject;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -44,14 +50,15 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     public static MainActivity instance;
-    public static final String BACKEND_URL = "YOUR_TEMP_URL_HERE"; // Replace with your serveo.net URL
+    public static final String BACKEND_URL = "https://d705deeec410d860-58-146-119-96.serveousercontent.com"; // Verified Google Infrastructure Tunnel
     private boolean isSosActive = false;
     private MediaRecorder mediaRecorder;
     private String audioFilePath;
     private Location lastKnownLocation;
     
     // Global Listeners for Stability
-    private LocationListener globalLocationListener;
+    private FusedLocationProviderClient fusedLocationClient;
+    private LocationCallback locationCallback;
     private boolean isLocationTracking = false;
     
     private SensorManager sensorManager;
@@ -65,6 +72,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SpeechRecognizer speechRecognizer;
     private int safetyHelpCount = 0;
     private boolean isListening = false;
+
+    // Auto-discovery: IP found via UDP beacon or scanning (works on any network)
+    private volatile String discoveredServerIp = null;
+    private volatile boolean isServerConnected = false;
+    private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     private Fragment homeFragment;
     private TrackFragment trackFragment;
@@ -164,26 +176,28 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void switchFragment(Fragment fragment, String tag, FragmentInitializer initializer) {
+        if (activeFragment == fragment && fragment != null) return;
+        
+        androidx.fragment.app.FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out);
+        
+        if (activeFragment != null) {
+            transaction.hide(activeFragment);
+        }
+        
         if (fragment == null) {
             initializer.init();
-            fragment = getSupportFragmentManager().findFragmentByTag(tag);
-            if (fragment == null) {
-                // If the fragment is uniquely identified by the tag, wait to assign it.
-                if (tag.equals("home")) fragment = homeFragment;
-                else if (tag.equals("track")) fragment = trackFragment;
-                else if (tag.equals("risk")) fragment = riskMapFragment;
-                else if (tag.equals("settings")) fragment = settingsFragment;
-                
-                getSupportFragmentManager().beginTransaction()
-                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                    .add(R.id.fragment_container, fragment, tag)
-                    .hide(activeFragment).show(fragment).commit();
-            }
+            if (tag.equals("home")) fragment = homeFragment;
+            else if (tag.equals("track")) fragment = trackFragment;
+            else if (tag.equals("risk")) fragment = riskMapFragment;
+            else if (tag.equals("settings")) fragment = settingsFragment;
+            
+            transaction.add(R.id.fragment_container, fragment, tag);
         } else {
-            getSupportFragmentManager().beginTransaction()
-                .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                .hide(activeFragment).show(fragment).commit();
+            transaction.show(fragment);
         }
+        
+        transaction.commit();
         activeFragment = fragment;
     }
 
@@ -244,33 +258,37 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void setupGlobalLocationListener() {
-        if (globalLocationListener == null) {
-            globalLocationListener = new LocationListener() {
+        if (locationCallback == null) {
+            locationCallback = new LocationCallback() {
                 @Override
-                public void onLocationChanged(@NonNull Location location) {
-                    lastKnownLocation = location;
-                    
-                    // Geofencing AI Demonstration
-                    if (!hasNotifiedShadyArea) {
-                        hasNotifiedShadyArea = true;
-                        new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("⚠️ AI Geofence Warning")
-                            .setMessage("You have entered a historically Shady/High-Risk Area. Stay vigilant. Voice AI is active: shout 'Help' 7 times to trigger auto-SOS.")
-                            .setPositiveButton("I Understand", null)
-                            .show();
-                    }
-
-                    if (isSosActive) {
-                        logLocationSecretly(location, "GPS");
+                public void onLocationResult(@NonNull LocationResult locationResult) {
+                    if (locationResult == null) return;
+                    for (Location location : locationResult.getLocations()) {
+                        lastKnownLocation = location;
                         
-                        if (!hasSentLocationSms) {
-                            String uri = "http://maps.google.com/maps?q=" + location.getLatitude() + "," + location.getLongitude();
-                            sendSosSms("SOS! I need help! My live location is: " + uri);
-                            hasSentLocationSms = true;
+                        // Geofencing AI Demonstration
+                        SharedPreferences prefs = getSharedPreferences("SafetyFeaturesPrefs", Context.MODE_PRIVATE);
+                        if (!hasNotifiedShadyArea && prefs.getBoolean("ai_monitoring_enabled", true)) {
+                            hasNotifiedShadyArea = true;
+                            new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("⚠️ AI Perimeter Alert")
+                                .setMessage("You have entered a historically Shady/High-Risk Area. Stay vigilant. Voice AI is active: shout 'Help' 7 times to trigger auto-SOS.")
+                                .setPositiveButton("I Understand", null)
+                                .show();
                         }
-                    }
-                    if (trackFragment != null && activeFragment == trackFragment) {
-                        trackFragment.updateLocation(location);
+
+                        if (isSosActive) {
+                            logLocationSecretly(location, "GPS");
+                            
+                            if (!hasSentLocationSms) {
+                                String uri = "http://maps.google.com/maps?q=" + location.getLatitude() + "," + location.getLongitude();
+                                sendSosSms("SOS! I need help! My live location is: " + uri);
+                                hasSentLocationSms = true;
+                            }
+                        }
+                        if (trackFragment != null && activeFragment == trackFragment) {
+                            trackFragment.updateLocation(location);
+                        }
                     }
                 }
             };
@@ -279,15 +297,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void fetchLocationContinuous() {
         if (isLocationTracking) return; // Prevent stacking listeners
-        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        
+        if (fusedLocationClient == null) {
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        }
+        
         try {
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 10, globalLocationListener);
-                isLocationTracking = true;
-            } else if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 3000, 10, globalLocationListener);
-                isLocationTracking = true;
-            }
+            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
+                .setMinUpdateIntervalMillis(1000)
+                .build();
+                
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, android.os.Looper.getMainLooper());
+            isLocationTracking = true;
         } catch (SecurityException e) {
             e.printStackTrace();
         }
@@ -378,72 +399,127 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void mockUploadAudioEvidence() {
         if (audioFilePath == null) return;
-        Toast.makeText(this, "Uploading Audio Evidence to Secure Backend...", Toast.LENGTH_SHORT).show();
-        
+        Toast.makeText(this, "Uploading evidence...", Toast.LENGTH_SHORT).show();
+
         new Thread(() -> {
             try {
                 File audioFile = new File(audioFilePath);
-                if (!audioFile.exists()) return;
-                
-                URL url = new URL(BACKEND_URL + "/upload");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setDoOutput(true);
-                conn.setRequestMethod("POST");
-                
-                // Set custom location headers
-                if (lastKnownLocation != null) {
-                    conn.setRequestProperty("X-Location-Lat", String.valueOf(lastKnownLocation.getLatitude()));
-                    conn.setRequestProperty("X-Location-Lon", String.valueOf(lastKnownLocation.getLongitude()));
-                } else {
-                    conn.setRequestProperty("X-Location-Lat", "Unknown");
-                    conn.setRequestProperty("X-Location-Lon", "Unknown");
+                if (!audioFile.exists()) {
+                    runOnUiThread(() -> Toast.makeText(this, "Audio file not found.", Toast.LENGTH_SHORT).show());
+                    return;
                 }
+
+                // ─── Step 1: Upload directly to LAN IP ───
+                SharedPreferences settingsPrefs = getSharedPreferences("SafetyPrefs", Context.MODE_PRIVATE);
+                String manualIp = settingsPrefs.getString("manual_server_ip", "").trim();
+
+                // Build prioritized list of hosts to try
+                java.util.List<String> hosts = new java.util.ArrayList<>();
+                if (!manualIp.isEmpty()) hosts.add(manualIp.startsWith("http") ? manualIp : "http://" + manualIp + ":8000");
+                if (discoveredServerIp != null) hosts.add("http://" + discoveredServerIp + ":8000");
                 
-                // Write file to body
-                conn.setRequestProperty("Content-Length", String.valueOf(audioFile.length()));
-                conn.setRequestProperty("Content-Type", "application/octet-stream");
-                
-                OutputStream os = conn.getOutputStream();
-                FileInputStream fis = new FileInputStream(audioFile);
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = fis.read(buffer)) != -1) {
-                    os.write(buffer, 0, bytesRead);
+                // Final fallbacks
+                hosts.add("http://192.168.43.1:8000"); // Samsung Hotspot
+                hosts.add("http://192.168.0.104:8000"); // Original home IP
+                hosts.add("http://10.0.2.2:8000");      // Emulator alias
+
+                String[] uploadHosts = hosts.toArray(new String[0]);
+
+                String successfulUploadHost = null;
+                String evidenceId = null;
+
+                for (String host : uploadHosts) {
+                    try {
+                        URL url = new URL(host + "/upload");
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setDoOutput(true);
+                        conn.setRequestMethod("POST");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(15000);
+
+                        if (lastKnownLocation != null) {
+                            conn.setRequestProperty("X-Location-Lat", String.valueOf(lastKnownLocation.getLatitude()));
+                            conn.setRequestProperty("X-Location-Lon", String.valueOf(lastKnownLocation.getLongitude()));
+                        } else {
+                            conn.setRequestProperty("X-Location-Lat", "Unknown");
+                            conn.setRequestProperty("X-Location-Lon", "Unknown");
+                        }
+
+                        conn.setRequestProperty("Content-Length", String.valueOf(audioFile.length()));
+                        conn.setRequestProperty("Content-Type", "application/octet-stream");
+
+                        OutputStream os = conn.getOutputStream();
+                        FileInputStream fis = new FileInputStream(audioFile);
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = fis.read(buffer)) != -1) os.write(buffer, 0, bytesRead);
+                        fis.close();
+                        os.flush();
+                        os.close();
+
+                        if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                            StringBuilder sb = new StringBuilder();
+                            String line;
+                            while ((line = br.readLine()) != null) sb.append(line);
+                            br.close();
+                            JSONObject json = new JSONObject(sb.toString());
+                            evidenceId = json.getString("id");
+                            successfulUploadHost = host;
+                            break;
+                        }
+                    } catch (Exception hostErr) {
+                        // Try next host
+                    }
                 }
-                fis.close();
-                os.flush();
-                os.close();
-                
-                int responseCode = conn.getResponseCode();
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) sb.append(line);
-                    br.close();
-                    
-                    JSONObject json = new JSONObject(sb.toString());
-                    String id = json.getString("id");
-                    
-                    String evidenceUrl = BACKEND_URL + "/evidence/" + id;
-                    
+
+                if (evidenceId == null) {
                     runOnUiThread(() -> {
-                        Toast.makeText(this, "Audio Evidence Uploaded!", Toast.LENGTH_SHORT).show();
-                        String audioMessage = "SOS EVIDENCE: Encrypted audio recording & location from the incident is available at: " + evidenceUrl;
-                        sendSosSms(audioMessage);
+                        Toast.makeText(this, "Upload failed — evidence saved on device", Toast.LENGTH_LONG).show();
+                        sendSosSms("SAFETY ALERT: Audio evidence saved securely on-device. (Server unreachable from this network)");
                     });
-                } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Failed to upload evidence.", Toast.LENGTH_SHORT).show();
-                    });
+                    return;
                 }
+
+                // ─── Step 2: Get the public tunnel URL for the SMS link ───
+                // The upload succeeded to LAN; now get the Serveo public URL for sharing
+                String publicEvidenceUrl = null;
+                try {
+                    URL urlApi = new URL(successfulUploadHost + "/url");
+                    HttpURLConnection urlConn = (HttpURLConnection) urlApi.openConnection();
+                    urlConn.setConnectTimeout(4000);
+                    urlConn.setReadTimeout(4000);
+                    if (urlConn.getResponseCode() == 200) {
+                        BufferedReader br = new BufferedReader(new InputStreamReader(urlConn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String l;
+                        while ((l = br.readLine()) != null) sb.append(l);
+                        br.close();
+                        JSONObject urlJson = new JSONObject(sb.toString());
+                        String tunnelUrl = urlJson.getString("url");
+                        if (tunnelUrl != null && tunnelUrl.startsWith("https://")) {
+                            publicEvidenceUrl = tunnelUrl + "/evidence/" + evidenceId;
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                // Fallback: use hardcoded URL
+                if (publicEvidenceUrl == null) {
+                    publicEvidenceUrl = BACKEND_URL + "/evidence/" + evidenceId;
+                }
+
+                final String finalEvidenceUrl = publicEvidenceUrl;
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "✅ Evidence Secured!", Toast.LENGTH_SHORT).show();
+                    String audioMessage = "SAFETY ALERT: Audio evidence & location verified at: " + finalEvidenceUrl;
+                    sendSosSms(audioMessage);
+                });
+
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "Error: " + e.getMessage() + ". Did you start the server?", Toast.LENGTH_LONG).show();
-                    // Fallback so the second SMS still sends even offline
-                    String fallbackMessage = "SOS EVIDENCE: Audio secretly recorded and stored securely on device. (Cloud unavailable)";
-                    sendSosSms(fallbackMessage);
+                    Toast.makeText(this, "Upload error — evidence saved on device", Toast.LENGTH_LONG).show();
+                    sendSosSms("SAFETY ALERT: Audio evidence secured on-device. (Network error)");
                 });
             }
         }).start();
@@ -467,12 +543,229 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private void startContinuousSpeechRecognition() {
-        // Disabled active speech loop to stop the continuous system beep sound
+    /**
+     * Advanced Discovery 2.0:
+     * 1. Listens for UDP beacon (Port 8765)
+     * 2. Tries Manual IP from Settings
+     * 3. Scans common hotspot gateways
+     */
+    private void startServerDiscovery() {
+        // Start Heartbeat to update UI status dot
+        startConnectionHeartbeat();
+
+        // 1. UDP Listener Thread
+        new Thread(() -> {
+            DatagramSocket socket = null;
+            try {
+                android.net.wifi.WifiManager wifiManager = (android.net.wifi.WifiManager)
+                        getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                android.net.wifi.WifiManager.MulticastLock lock =
+                        wifiManager.createMulticastLock("safetyai_discovery");
+                lock.setReferenceCounted(true);
+                lock.acquire();
+
+                socket = new DatagramSocket(8765);
+                socket.setBroadcast(true);
+                byte[] buf = new byte[512];
+                while (true) {
+                    try {
+                        DatagramPacket packet = new DatagramPacket(buf, buf.length);
+                        socket.receive(packet);
+                        String msg = new String(packet.getData(), 0, packet.getLength(), "UTF-8");
+                        JSONObject json = new JSONObject(msg);
+                        if ("safetyai_server".equals(json.optString("service"))) {
+                            String serverIp = json.getString("ip");
+                            if (!serverIp.equals(discoveredServerIp)) {
+                                discoveredServerIp = serverIp;
+                                android.util.Log.d("SafetyAI", "UDP Discovered Server: " + serverIp);
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+            } catch (Exception e) {
+                android.util.Log.e("SafetyAI", "UDP Discovery failed: " + e.getMessage());
+            } finally {
+                if (socket != null) socket.close();
+            }
+        }).start();
+
+        // 2. Active Scanner Thread (Checks manual IP and Hotspot Gateways)
+        new Thread(() -> {
+            while (true) {
+                refreshBackendConnection();
+                try { Thread.sleep(10000); } catch (InterruptedException e) { break; }
+            }
+        }).start();
     }
-    
+
+    public void refreshBackendConnection() {
+        new Thread(() -> {
+            SharedPreferences settingsPrefs = getSharedPreferences("SafetyPrefs", Context.MODE_PRIVATE);
+            String manualIp = settingsPrefs.getString("manual_server_ip", "").trim();
+            
+            String[] commonHosts = {
+                manualIp, 
+                discoveredServerIp,
+                "192.168.43.1", // Standard Android Hotspot
+                "192.168.0.104", // User's home IP
+                "10.0.2.2"       // Emulator
+            };
+
+            for (String ip : commonHosts) {
+                if (ip == null || ip.isEmpty()) continue;
+                String host = ip.startsWith("http") ? ip : "http://" + ip + ":8000";
+                if (pingServer(host)) {
+                    discoveredServerIp = ip.replace("http://", "").replace(":8000", "");
+                    isServerConnected = true;
+                    return;
+                }
+            }
+            isServerConnected = false;
+        }).start();
+    }
+
+    private boolean pingServer(String host) {
+        try {
+            URL url = new URL(host + "/ping");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(2000);
+            conn.setReadTimeout(2000);
+            return conn.getResponseCode() == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void startConnectionHeartbeat() {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                // Update HomeFragment if visible
+                if (homeFragment instanceof HomeFragment) {
+                    ((HomeFragment) homeFragment).updateServerStatus(isServerConnected);
+                }
+                handler.postDelayed(this, 3000);
+            }
+        });
+    }
+
+
+    private void startContinuousSpeechRecognition() {
+
+        SharedPreferences prefs = getSharedPreferences("SafetyFeaturesPrefs", Context.MODE_PRIVATE);
+        if (!prefs.getBoolean("voice_sos_enabled", true)) return;
+
+        if (speechRecognizer == null) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                @Override
+                public void onReadyForSpeech(Bundle params) {}
+
+                @Override
+                public void onBeginningOfSpeech() {}
+
+                @Override
+                public void onRmsChanged(float rmsdB) {}
+
+                @Override
+                public void onBufferReceived(byte[] buffer) {}
+
+                @Override
+                public void onEndOfSpeech() {}
+
+                @Override
+                public void onError(int error) {
+                    isListening = false;
+                    // Retry after short delay on recoverable errors
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        startListeningIntent();
+                    }, 1500);
+                }
+
+                @Override
+                public void onResults(Bundle results) {
+                    isListening = false;
+                    java.util.ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (matches != null) {
+                        for (String phrase : matches) {
+                            String lower = phrase.toLowerCase();
+                            // Count each occurrence of "help" in the phrase
+                            int idx = 0;
+                            while ((idx = lower.indexOf("help", idx)) != -1) {
+                                safetyHelpCount++;
+                                idx += 4;
+                            }
+                        }
+                    }
+
+                    if (safetyHelpCount >= 7) {
+                        safetyHelpCount = 0;
+                        runOnUiThread(() -> {
+                            Toast.makeText(MainActivity.this, "🆘 Voice SOS Triggered! Activating...", Toast.LENGTH_SHORT).show();
+                            if (!isSosActive) {
+                                toggleSos();
+                                // Notify the home fragment to update the UI
+                                if (homeFragment instanceof HomeFragment) {
+                                    ((HomeFragment) homeFragment).setSosUiActive(true);
+                                }
+                            }
+                        });
+                    } else {
+                        // Continue listening
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                            startListeningIntent();
+                        }, 300);
+                    }
+                }
+
+                @Override
+                public void onPartialResults(Bundle partialResults) {}
+
+                @Override
+                public void onEvent(int eventType, Bundle params) {}
+            });
+        }
+
+        startListeningIntent();
+    }
+
     private void startListeningIntent() {
-        // Disabled active speech loop to stop the continuous system beep sound
+        SharedPreferences prefs = getSharedPreferences("SafetyFeaturesPrefs", Context.MODE_PRIVATE);
+        if (!prefs.getBoolean("voice_sos_enabled", true)) return;
+        if (isListening) return;
+
+        try {
+            // Mute the beep sound by temporarily silencing the AudioManager stream
+            AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            int originalVolume = 0;
+            if (audioManager != null) {
+                originalVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
+            }
+            final int savedVolume = originalVolume;
+            final AudioManager finalAudioManager = audioManager;
+
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN");
+            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            intent.putExtra("android.speech.extra.DICTATION_MODE", true);
+
+            speechRecognizer.startListening(intent);
+            isListening = true;
+
+            // Restore volume 200ms after starting (after beep window has passed)
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (finalAudioManager != null) {
+                    finalAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, savedVolume, 0);
+                }
+            }, 200);
+
+        } catch (Exception e) {
+            isListening = false;
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -481,8 +774,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (sensorManager != null) {
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         }
-        
-        // Start Voice AI naturally on resume
+        // Start server auto-discovery (works on any network)
+        startServerDiscovery();
+        // Start Voice AI
         startContinuousSpeechRecognition();
     }
 
@@ -501,6 +795,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+        SharedPreferences prefs = getSharedPreferences("SafetyFeaturesPrefs", Context.MODE_PRIVATE);
+        if (!prefs.getBoolean("fall_detection_enabled", true)) return;
+
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             long curTime = System.currentTimeMillis();
             if ((curTime - lastSensorUpdate) > 1000) { 
@@ -530,9 +827,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         
         // Final memory cleanup
         try {
-            LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-            if (locationManager != null && globalLocationListener != null) {
-                locationManager.removeUpdates(globalLocationListener);
+            if (fusedLocationClient != null && locationCallback != null) {
+                fusedLocationClient.removeLocationUpdates(locationCallback);
                 isLocationTracking = false;
             }
         } catch (Exception e) {
