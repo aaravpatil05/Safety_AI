@@ -20,6 +20,7 @@ import android.media.MediaRecorder;
 import android.media.ToneGenerator;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -50,7 +51,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     public static MainActivity instance;
-    public static final String BACKEND_URL = "https://d705deeec410d860-58-146-119-96.serveousercontent.com"; // Verified Google Infrastructure Tunnel
+    public static final String BACKEND_URL = "https://fc90668f594b13.lhr.life"; // Fresh localhost.run Tunnel
     private boolean isSosActive = false;
     private MediaRecorder mediaRecorder;
     private String audioFilePath;
@@ -232,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Toast.makeText(this, "\uD83D\uDEA8 SOS ACTIVE: GPS Tracking & Hidden Audio Recording Started!", Toast.LENGTH_LONG).show();
             
             // Send initial alert
-            sendSosSms("SOS! Emergency Alert Triggered. Getting location...");
+            sendSosSms("⚠️ SOS Alert Triggered! Fetching live location...");
             appendNotification("SOS ACTIVATED");
             
             return true;
@@ -250,11 +251,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void appendNotification(String message) {
-        SharedPreferences prefs = getSharedPreferences("SafetyPrefs", Context.MODE_PRIVATE);
-        String history = prefs.getString("sos_history", "");
+        SharedPreferences prefs = getSharedPreferences("SafetyNotifications", Context.MODE_PRIVATE);
+        String history = prefs.getString("history", "");
         String timestamp = new java.text.SimpleDateFormat("MMM dd, yyyy - hh:mm a", java.util.Locale.getDefault()).format(new java.util.Date());
-        String entry = "⏺ " + timestamp + "\n      " + message + "\n\n";
-        prefs.edit().putString("sos_history", entry + history).apply();
+        
+        // Format: message|timestamp\n (to match NotificationsActivity parser)
+        String entry = message + "|" + timestamp + "\n";
+        prefs.edit().putString("history", entry + history).apply();
     }
 
     private void setupGlobalLocationListener() {
@@ -264,6 +267,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 public void onLocationResult(@NonNull LocationResult locationResult) {
                     if (locationResult == null) return;
                     for (Location location : locationResult.getLocations()) {
+                        // Prevent OnePlus/Android from returning a stale cached location (e.g. from hours ago)
+                        long locationAgeNanos = android.os.SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos();
+                        if (locationAgeNanos > 30_000_000_000L) { // 30 seconds
+                            continue; // Skip cached location, wait for a fresh live GPS fix!
+                        }
+                        
                         lastKnownLocation = location;
                         
                         // Geofencing AI Demonstration
@@ -282,7 +291,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             
                             if (!hasSentLocationSms) {
                                 String uri = "http://maps.google.com/maps?q=" + location.getLatitude() + "," + location.getLongitude();
-                                sendSosSms("SOS! I need help! My live location is: " + uri);
+                                String msg = "⚠️ SOS! I need help!\n📍 Live Location: " + uri + "\n🎙️ Dashboard: " + BACKEND_URL;
+                                sendSosSms(msg);
                                 hasSentLocationSms = true;
                             }
                         }
@@ -330,7 +340,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void startAudioRecording() {
         try {
-            audioFilePath = getExternalCacheDir().getAbsolutePath() + "/sos_evidence.3gp";
+            // Move to public Downloads folder for easy user access
+            File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File safetyDir = new File(downloadDir, "SafetyAI");
+            if (!safetyDir.exists()) safetyDir.mkdirs();
+            
+            audioFilePath = safetyDir.getAbsolutePath() + "/sos_evidence.3gp";
+            
             mediaRecorder = new MediaRecorder();
             mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
@@ -367,6 +383,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         boolean hasSmsPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
 
         if (hasSmsPermission) {
+            if (c1.isEmpty() && c2.isEmpty() && c3.isEmpty()) {
+                Toast.makeText(this, "⚠️ EMERGENCY: No Contacts Set! Go to Settings.", Toast.LENGTH_LONG).show();
+                return;
+            }
             SmsManager smsManager = SmsManager.getDefault();
             // Send native background texts securely preventing a single failure from cascading
             sendDirectSmsSafely(smsManager, cleanNumber(c1), message);
@@ -415,13 +435,27 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                 // Build prioritized list of hosts to try
                 java.util.List<String> hosts = new java.util.ArrayList<>();
+                
+                // --- PRIORITY 1: Public Tunnel (Works everywhere) ---
+                if (BACKEND_URL != null && !BACKEND_URL.isEmpty()) {
+                    hosts.add(BACKEND_URL);
+                }
+
                 if (!manualIp.isEmpty()) hosts.add(manualIp.startsWith("http") ? manualIp : "http://" + manualIp + ":8000");
                 if (discoveredServerIp != null) hosts.add("http://" + discoveredServerIp + ":8000");
                 
-                // Final fallbacks
+                // Final fallbacks (including Apple/Standard hotspots)
+                hosts.add("http://172.20.10.1:8000");  // Apple Hotspot Gateway
+                hosts.add("http://192.168.0.101:8000"); // User's current Mac IP
                 hosts.add("http://192.168.43.1:8000"); // Samsung Hotspot
+                hosts.add("http://192.168.1.1:8000");  // Std Gateway
                 hosts.add("http://192.168.0.104:8000"); // Original home IP
                 hosts.add("http://10.0.2.2:8000");      // Emulator alias
+                
+                // --- CRITICAL FALLBACK: Public Tunnel ---
+                if (BACKEND_URL != null && !BACKEND_URL.isEmpty()) {
+                    hosts.add(BACKEND_URL);
+                }
 
                 String[] uploadHosts = hosts.toArray(new String[0]);
 
@@ -476,7 +510,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 if (evidenceId == null) {
                     runOnUiThread(() -> {
                         Toast.makeText(this, "Upload failed — evidence saved on device", Toast.LENGTH_LONG).show();
-                        sendSosSms("SAFETY ALERT: Audio evidence saved securely on-device. (Server unreachable from this network)");
+                        String locLink = (lastKnownLocation != null) ? "http://maps.google.com/maps?q=" + lastKnownLocation.getLatitude() + "," + lastKnownLocation.getLongitude() : "Location Unknown";
+                        sendSosSms("SAFETY ALERT: Audio evidence saved securely on-device. (Server unreachable). \nLast Known Location: " + locLink);
                     });
                     return;
                 }
@@ -509,9 +544,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
 
                 final String finalEvidenceUrl = publicEvidenceUrl;
+                String actualIp = (discoveredServerIp != null && !discoveredServerIp.isEmpty()) ? discoveredServerIp : "192.168.0.100";
+                final String localIpUrl = "http://" + actualIp + ":8000/evidence/" + evidenceId; // Direct Wi-Fi Link
+
                 runOnUiThread(() -> {
                     Toast.makeText(this, "✅ Evidence Secured!", Toast.LENGTH_SHORT).show();
-                    String audioMessage = "SAFETY ALERT: Audio evidence & location verified at: " + finalEvidenceUrl;
+                    String locLink = (lastKnownLocation != null) ? "http://maps.google.com/maps?q=" + lastKnownLocation.getLatitude() + "," + lastKnownLocation.getLongitude() : "Location Unknown";
+                    String audioMessage = "⚠️ EMERGENCY SAFETY ALERT ⚠️\n" +
+                                        "My SOS has been triggered. Evidence is secured:\n" +
+                                        "1. 🌍 Live Dashboard: " + finalEvidenceUrl + "\n" +
+                                        "2. 📍 Verified Location: " + locLink + "\n" +
+                                        "3. 📶 Local Network: " + localIpUrl;
                     sendSosSms(audioMessage);
                 });
 
@@ -604,10 +647,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             String manualIp = settingsPrefs.getString("manual_server_ip", "").trim();
             
             String[] commonHosts = {
+                BACKEND_URL,    // Priority 1: Fresh Tunnel
                 manualIp, 
                 discoveredServerIp,
-                "192.168.43.1", // Standard Android Hotspot
-                "192.168.0.104", // User's home IP
+                "192.168.0.100", // Your Current Home IP
+                "172.20.10.1",   // Apple Hotspot
+                "192.168.43.1",  // Standard Android Hotspot
+                "192.168.1.1",   // Common Home Router
                 "10.0.2.2"       // Emulator
             };
 
@@ -616,6 +662,34 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 String host = ip.startsWith("http") ? ip : "http://" + ip + ":8000";
                 if (pingServer(host)) {
                     discoveredServerIp = ip.replace("http://", "").replace(":8000", "");
+                    isServerConnected = true;
+                    return;
+                }
+            }
+
+            // --- INTELLIGENT SUBNET SCAN (Detects Current Range) ---
+            String baseIp = "192.168.0.";
+            if (discoveredServerIp != null && discoveredServerIp.contains(".")) {
+                baseIp = discoveredServerIp.substring(0, discoveredServerIp.lastIndexOf(".") + 1);
+            } else {
+                // Try to guess from common ranges if discovery fails
+                String[] commonSubnets = {"10.51.43.", "192.168.0.", "192.168.1.", "172.20.10."};
+                for (String subnet : commonSubnets) {
+                    for (int i = 1; i <= 40; i++) { // Scan first 40 IPs of common subnets
+                        if (pingServer("http://" + subnet + i + ":8000")) {
+                            discoveredServerIp = subnet + i;
+                            isServerConnected = true;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // General scan for the detected/current subnet
+            for (int i = 1; i <= 50; i++) {
+                String testIp = baseIp + i;
+                if (pingServer("http://" + testIp + ":8000")) {
+                    discoveredServerIp = testIp;
                     isServerConnected = true;
                     return;
                 }

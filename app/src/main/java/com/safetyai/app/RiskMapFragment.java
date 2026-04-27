@@ -48,46 +48,43 @@ public class RiskMapFragment extends Fragment {
         map.getController().setZoom(5.2);
         map.getController().setCenter(new GeoPoint(22.0, 78.0));
 
-        // High Risk (Red)
-        addPreciseMarker(28.6, 77.2, "CRITICAL", "Delhi NCR (High Alert)");
-        addPreciseMarker(26.8, 80.9, "CRITICAL", "Uttar Pradesh");
-        addPreciseMarker(25.0, 85.3, "CRITICAL", "Bihar");
-        addPreciseMarker(23.6, 87.8, "CRITICAL", "West Bengal");
-        addPreciseMarker(29.0, 76.0, "CRITICAL", "Haryana");
-        addPreciseMarker(23.6, 85.3, "CRITICAL", "Jharkhand");
-        addPreciseMarker(28.98, 77.7, "CRITICAL", "Meerut Zone");
-        addPreciseMarker(25.59, 85.13, "CRITICAL", "Patna Sector");
-        addPreciseMarker(26.21, 78.17, "CRITICAL", "Gwalior Zone");
-        addPreciseMarker(28.40, 77.31, "CRITICAL", "Faridabad Sector");
+        // High Risk / Critical Zones (Specific Areas)
+        addPreciseMarker(19.0356, 72.8400, "CRITICAL", "Mahim, Mumbai");
+        addPreciseMarker(18.9400, 72.8355, "CRITICAL", "CSMT, Mumbai");
+        addPreciseMarker(18.5160, 73.8400, "CRITICAL", "Deccan Gymkhana, Pune");
+        addPreciseMarker(21.1420, 79.0980, "CRITICAL", "Mahal Area, Nagpur");
+        addPreciseMarker(20.0050, 73.7910, "CRITICAL", "Panchavati, Nashik");
+        addPreciseMarker(19.8780, 75.3280, "CRITICAL", "Shahgunj, Sambhajinagar");
+        addPreciseMarker(19.1860, 72.9759, "CRITICAL", "Thane Station Area");
+        addPreciseMarker(28.6640, 77.2684, "CRITICAL", "Seelampur, Delhi");
+        addPreciseMarker(12.9645, 77.5750, "CRITICAL", "KR Market, Bengaluru");
+        addPreciseMarker(22.5835, 88.3435, "CRITICAL", "Howrah Station, Kolkata");
+        addPreciseMarker(13.0827, 80.2707, "CRITICAL", "Chennai Central Area");
+        addPreciseMarker(26.8329, 80.9197, "CRITICAL", "Charbagh, Lucknow");
+        addPreciseMarker(25.6110, 85.1440, "CRITICAL", "Patna Junction Area");
 
-        // Moderate Risk (Yellow)
-        addPreciseMarker(19.7, 75.7, "MODERATE", "Maharashtra");
-        addPreciseMarker(22.2, 71.1, "MODERATE", "Gujarat");
-        addPreciseMarker(22.9, 78.6, "MODERATE", "Madhya Pradesh");
-        addPreciseMarker(20.9, 85.0, "MODERATE", "Odisha");
-        addPreciseMarker(31.1, 75.3, "MODERATE", "Punjab");
-        addPreciseMarker(21.2, 81.6, "MODERATE", "Chhattisgarh");
-        addPreciseMarker(21.17, 72.83, "MODERATE", "Surat Hub");
-        addPreciseMarker(33.7, 76.5, "MODERATE", "J&K Territory");
-        addPreciseMarker(23.25, 77.41, "MODERATE", "Bhopal Sector");
-        addPreciseMarker(21.25, 81.62, "MODERATE", "Raipur Zone");
-        addPreciseMarker(22.71, 75.85, "MODERATE", "Indore Core");
+        // Moderate Risk Zones (Specific Areas)
+        addPreciseMarker(19.1136, 72.8697, "MODERATE", "Andheri East, Mumbai");
+        addPreciseMarker(18.5284, 73.8739, "MODERATE", "Pune Railway Station");
+        addPreciseMarker(21.1458, 79.0882, "MODERATE", "Sitabuldi, Nagpur");
+        addPreciseMarker(28.6304, 77.2177, "MODERATE", "Connaught Place, Delhi");
+        addPreciseMarker(17.3616, 78.4747, "MODERATE", "Charminar Area, Hyderabad");
+        addPreciseMarker(23.0225, 72.5714, "MODERATE", "Lal Darwaza, Ahmedabad");
+        addPreciseMarker(26.9124, 75.7873, "MODERATE", "Sindhi Camp, Jaipur");
 
-        // Safe Risk (Green)
-        addPreciseMarker(15.3, 76.8, "SAFE", "Karnataka");
-        addPreciseMarker(11.1, 78.6, "SAFE", "Tamil Nadu");
-        addPreciseMarker(10.8, 76.2, "SAFE", "Kerala");
-        addPreciseMarker(15.9, 79.7, "SAFE", "Andhra Pradesh");
-        addPreciseMarker(18.1, 79.0, "SAFE", "Telangana");
-        addPreciseMarker(27.0, 74.2, "SAFE", "Rajasthan");
-        addPreciseMarker(30.0, 79.0, "SAFE", "Uttarakhand");
-        addPreciseMarker(31.1, 77.1, "SAFE", "Himachal Pradesh");
-        addPreciseMarker(26.2, 92.9, "SAFE", "Assam Sector");
-        addPreciseMarker(15.2, 74.1, "SAFE", "Goa Hub");
-        addPreciseMarker(9.93, 76.26, "SAFE", "Kochi Coast");
-        addPreciseMarker(18.52, 73.85, "SAFE", "Pune Metro");
-        addPreciseMarker(8.52, 76.93, "SAFE", "Trivandrum Zone");
-        addPreciseMarker(31.10, 77.17, "SAFE", "Shimla Hub");
+        // Safe Risk Zones (Specific Areas)
+        addPreciseMarker(19.0596, 72.8295, "SAFE", "Bandra West, Mumbai");
+        addPreciseMarker(18.5913, 73.7389, "SAFE", "Hinjewadi IT Park, Pune");
+        addPreciseMarker(18.5362, 73.8967, "SAFE", "Koregaon Park, Pune");
+        addPreciseMarker(21.1540, 79.0710, "SAFE", "Civil Lines, Nagpur");
+        addPreciseMarker(20.0110, 73.7550, "SAFE", "College Road, Nashik");
+        addPreciseMarker(19.8650, 75.3620, "SAFE", "CIDCO, Sambhajinagar");
+        addPreciseMarker(19.2220, 72.9550, "SAFE", "Upvan Lake, Thane");
+        addPreciseMarker(28.6129, 77.2295, "SAFE", "India Gate, Delhi");
+        addPreciseMarker(12.9719, 77.6412, "SAFE", "Indiranagar, Bengaluru");
+        addPreciseMarker(22.5535, 88.3510, "SAFE", "Park Street, Kolkata");
+        addPreciseMarker(17.4140, 78.4350, "SAFE", "Banjara Hills, Hyderabad");
+        addPreciseMarker(13.0002, 80.2668, "SAFE", "Besant Nagar, Chennai");
 
         map.invalidate(); 
         return view;
@@ -102,16 +99,16 @@ public class RiskMapFragment extends Fragment {
         
         map.getOverlays().add(marker);
         
-        // True Soft Heat-Map Blur Layers (Massive size, zero borders, highly transparent)
+        // True Soft Heat-Map Blur Layers (City blocks)
         Polygon heatBlur = new Polygon(map);
-        heatBlur.setPoints(Polygon.pointsAsCircle(new GeoPoint(lat, lon), 150000.0)); // 150km soft spread
+        heatBlur.setPoints(Polygon.pointsAsCircle(new GeoPoint(lat, lon), 15000.0)); // 15km spread for visibility at country level
         
         int color;
         if (level.equals("CRITICAL")) color = Color.RED;
         else if (level.equals("MODERATE")) color = Color.YELLOW;
         else color = Color.GREEN;
         
-        heatBlur.setFillColor(Color.argb(35, Color.red(color), Color.green(color), Color.blue(color)));
+        heatBlur.setFillColor(Color.argb(40, Color.red(color), Color.green(color), Color.blue(color)));
         heatBlur.setStrokeWidth(0.0f); // NO border, allows seamless visual merging!
         map.getOverlays().add(0, heatBlur); // Insert beneath markers
     }
