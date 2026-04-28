@@ -428,26 +428,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     return;
                 }
 
-                // Upload to catbox.moe for permanent, direct links without expiration
+                // Upload to uguu.se (Guaranteed 24-hour hosting for presentation reliability!)
                 String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
-                URL url = new URL("https://catbox.moe/user/api.php");
+                URL url = new URL("https://uguu.se/upload.php");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setDoOutput(true);
                 conn.setRequestMethod("POST");
                 conn.setConnectTimeout(8000);
                 conn.setReadTimeout(15000);
+                conn.setRequestProperty("User-Agent", "SafetyAI-App");
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
                 OutputStream os = conn.getOutputStream();
                 
-                // reqtype field
-                os.write(("--" + boundary + "\r\n").getBytes());
-                os.write(("Content-Disposition: form-data; name=\"reqtype\"\r\n\r\n").getBytes());
-                os.write(("fileupload\r\n").getBytes());
-                
                 // File part
                 os.write(("--" + boundary + "\r\n").getBytes());
-                os.write(("Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + audioFile.getName() + "\"\r\n").getBytes());
+                os.write(("Content-Disposition: form-data; name=\"files[]\"; filename=\"" + audioFile.getName() + "\"\r\n").getBytes());
                 os.write(("Content-Type: audio/mp4\r\n\r\n").getBytes());
                 
                 FileInputStream fis = new FileInputStream(audioFile);
@@ -471,9 +467,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     while ((line = br.readLine()) != null) sb.append(line);
                     br.close();
                     
-                    String rawUrl = sb.toString().trim();
-                    if (rawUrl.startsWith("http")) {
-                        directAudioUrl = rawUrl;
+                    JSONObject json = new JSONObject(sb.toString());
+                    if (json.has("success") && json.getBoolean("success")) {
+                        directAudioUrl = json.getJSONArray("files").getJSONObject(0).getString("url");
                     }
                 }
 
