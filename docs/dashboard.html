@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safety AI - Emergency Evidence Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --md-sys-color-primary: #D32F2F;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-surface: #1E1E1E;
+            --md-sys-color-surface-variant: #2D2D2D;
+            --md-sys-color-on-surface: #E3E3E3;
+            --md-sys-color-outline: #8E918F;
+            --md-sys-color-error: #FFB4AB;
+            --md-sys-color-background: #121212;
+            --border-radius: 16px;
+        }
+
+        body {
+            font-family: 'Google Sans', Arial, sans-serif;
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-surface);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--md-sys-color-surface);
+            border-radius: var(--border-radius);
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            margin: 20px;
+        }
+
+        .header {
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            padding: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .pulse-icon {
+            width: 16px;
+            height: 16px;
+            background-color: #fff;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        .content {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--md-sys-color-outline);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 250px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            border: 1px solid var(--md-sys-color-surface-variant);
+            background-color: var(--md-sys-color-surface-variant);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .audio-player-card {
+            background-color: var(--md-sys-color-surface-variant);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        audio {
+            width: 100%;
+            height: 48px;
+            outline: none;
+        }
+
+        /* Customizing Audio Player for Webkit */
+        audio::-webkit-media-controls-panel {
+            background-color: #424242;
+        }
+        audio::-webkit-media-controls-current-time-display,
+        audio::-webkit-media-controls-time-remaining-display {
+            color: #fff;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            background-color: rgba(76, 175, 80, 0.15);
+            color: #4CAF50;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            gap: 6px;
+            align-self: flex-start;
+        }
+
+        .error-message {
+            color: var(--md-sys-color-error);
+            font-size: 14px;
+            background-color: rgba(255, 180, 171, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 12px;
+            color: var(--md-sys-color-outline);
+            background-color: var(--md-sys-color-surface-variant);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1><div class="pulse-icon"></div> Safety AI Alert</h1>
+            <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">Emergency Evidence Secured</p>
+        </div>
+
+        <div class="content">
+            <div class="status-badge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                Verified Genuine Data
+            </div>
+
+            <div>
+                <div class="section-title">Verified Location</div>
+                <div class="map-container" id="map-container">
+                    <iframe id="map-frame" src="about:blank"></iframe>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Encrypted Audio Evidence</div>
+                <div class="audio-player-card">
+                    <p style="margin: 0; font-size: 14px; color: #bbb;">Recorded during SOS activation</p>
+                    <div id="audio-error" class="error-message">Audio evidence not provided or expired.</div>
+                    <audio id="audio-player" controls preload="metadata">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            Powered by Safety AI Engine • Offline/Cloud Sync
+        </div>
+    </div>
+
+    <script>
+        // Parse URL Parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const lat = urlParams.get('lat') || '0';
+        const lon = urlParams.get('lon') || '0';
+        let audioUrl = urlParams.get('audio');
+
+        // Setup Map
+        const mapFrame = document.getElementById('map-frame');
+        if (lat !== '0' && lon !== '0') {
+            // Using Google Maps Embed API
+            mapFrame.src = `https://maps.google.com/maps?q=${lat},${lon}&hl=en&z=15&output=embed`;
+        } else {
+            document.getElementById('map-container').innerHTML = '<div style="display:flex; height:100%; align-items:center; justify-content:center; color:#888;">Location data unavailable</div>';
+        }
+
+        // Setup Audio
+        const audioPlayer = document.getElementById('audio-player');
+        const audioError = document.getElementById('audio-error');
+
+        if (audioUrl) {
+            // Fix tmpfiles direct link if not formatted properly
+            if (audioUrl.includes('tmpfiles.org/') && !audioUrl.includes('/dl/')) {
+                audioUrl = audioUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+            }
+            
+            // Apply source to player
+            audioPlayer.src = audioUrl;
+            
+            // Ensure audio plays properly on mobile
+            audioPlayer.addEventListener('error', () => {
+                audioPlayer.style.display = 'none';
+                audioError.style.display = 'block';
+                audioError.innerText = "Error loading audio. It may have expired.";
+            });
+        } else {
+            audioPlayer.style.display = 'none';
+            audioError.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

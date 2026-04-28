@@ -233,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Toast.makeText(this, "\uD83D\uDEA8 SOS ACTIVE: GPS Tracking & Hidden Audio Recording Started!", Toast.LENGTH_LONG).show();
             
             // Send initial alert
-            sendSosSms("⚠️ SOS Alert Triggered! Fetching live location...");
+            sendSosSms("SOS! Emergency Alert Triggered. Getting location...");
             appendNotification("SOS ACTIVATED");
             
             return true;
@@ -291,7 +291,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                             
                             if (!hasSentLocationSms) {
                                 String uri = "http://maps.google.com/maps?q=" + location.getLatitude() + "," + location.getLongitude();
-                                String msg = "⚠️ SOS! I need help!\n📍 Live Location: " + uri + "\n🎙️ Dashboard: " + BACKEND_URL;
+                                String msg = "SOS! I need help! My live location is:\n" + uri;
                                 sendSosSms(msg);
                                 hasSentLocationSms = true;
                             }
@@ -419,7 +419,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void mockUploadAudioEvidence() {
         if (audioFilePath == null) return;
-        Toast.makeText(this, "Uploading evidence...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Securing evidence to cloud...", Toast.LENGTH_SHORT).show();
 
         new Thread(() -> {
             try {
@@ -429,140 +429,95 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     return;
                 }
 
-                // ─── Step 1: Upload directly to LAN IP ───
-                SharedPreferences settingsPrefs = getSharedPreferences("SafetyPrefs", Context.MODE_PRIVATE);
-                String manualIp = settingsPrefs.getString("manual_server_ip", "").trim();
+                // Upload to tmpfiles.org
+                String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
+                URL url = new URL("https://tmpfiles.org/api/v1/upload");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setDoOutput(true);
+                conn.setRequestMethod("POST");
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(15000);
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
-                // Build prioritized list of hosts to try
-                java.util.List<String> hosts = new java.util.ArrayList<>();
+                OutputStream os = conn.getOutputStream();
                 
-                // --- PRIORITY 1: Public Tunnel (Works everywhere) ---
-                if (BACKEND_URL != null && !BACKEND_URL.isEmpty()) {
-                    hosts.add(BACKEND_URL);
+                // File part
+                os.write(("--" + boundary + "\r\n").getBytes());
+                os.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + audioFile.getName() + "\"\r\n").getBytes());
+                os.write(("Content-Type: application/octet-stream\r\n\r\n").getBytes());
+                
+                FileInputStream fis = new FileInputStream(audioFile);
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
                 }
+                fis.close();
+                os.write(("\r\n").getBytes());
+                os.write(("--" + boundary + "--\r\n").getBytes());
+                os.flush();
+                os.close();
 
-                if (!manualIp.isEmpty()) hosts.add(manualIp.startsWith("http") ? manualIp : "http://" + manualIp + ":8000");
-                if (discoveredServerIp != null) hosts.add("http://" + discoveredServerIp + ":8000");
-                
-                // Final fallbacks (including Apple/Standard hotspots)
-                hosts.add("http://172.20.10.1:8000");  // Apple Hotspot Gateway
-                hosts.add("http://192.168.0.101:8000"); // User's current Mac IP
-                hosts.add("http://192.168.43.1:8000"); // Samsung Hotspot
-                hosts.add("http://192.168.1.1:8000");  // Std Gateway
-                hosts.add("http://192.168.0.104:8000"); // Original home IP
-                hosts.add("http://10.0.2.2:8000");      // Emulator alias
-                
-                // --- CRITICAL FALLBACK: Public Tunnel ---
-                if (BACKEND_URL != null && !BACKEND_URL.isEmpty()) {
-                    hosts.add(BACKEND_URL);
-                }
+                String directAudioUrl = null;
 
-                String[] uploadHosts = hosts.toArray(new String[0]);
-
-                String successfulUploadHost = null;
-                String evidenceId = null;
-
-                for (String host : uploadHosts) {
-                    try {
-                        URL url = new URL(host + "/upload");
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setDoOutput(true);
-                        conn.setRequestMethod("POST");
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(15000);
-
-                        if (lastKnownLocation != null) {
-                            conn.setRequestProperty("X-Location-Lat", String.valueOf(lastKnownLocation.getLatitude()));
-                            conn.setRequestProperty("X-Location-Lon", String.valueOf(lastKnownLocation.getLongitude()));
-                        } else {
-                            conn.setRequestProperty("X-Location-Lat", "Unknown");
-                            conn.setRequestProperty("X-Location-Lon", "Unknown");
-                        }
-
-                        conn.setRequestProperty("Content-Length", String.valueOf(audioFile.length()));
-                        conn.setRequestProperty("Content-Type", "application/octet-stream");
-
-                        OutputStream os = conn.getOutputStream();
-                        FileInputStream fis = new FileInputStream(audioFile);
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        while ((bytesRead = fis.read(buffer)) != -1) os.write(buffer, 0, bytesRead);
-                        fis.close();
-                        os.flush();
-                        os.close();
-
-                        if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                            StringBuilder sb = new StringBuilder();
-                            String line;
-                            while ((line = br.readLine()) != null) sb.append(line);
-                            br.close();
-                            JSONObject json = new JSONObject(sb.toString());
-                            evidenceId = json.getString("id");
-                            successfulUploadHost = host;
-                            break;
-                        }
-                    } catch (Exception hostErr) {
-                        // Try next host
+                if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    br.close();
+                    
+                    JSONObject json = new JSONObject(sb.toString());
+                    if (json.has("status") && json.getString("status").equals("success")) {
+                        String rawUrl = json.getJSONObject("data").getString("url");
+                        // Convert http://tmpfiles.org/ID/file.3gp to https://tmpfiles.org/dl/ID/file.3gp for direct play
+                        directAudioUrl = rawUrl.replace("tmpfiles.org/", "tmpfiles.org/dl/").replace("http://", "https://");
                     }
                 }
 
-                if (evidenceId == null) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Upload failed — evidence saved on device", Toast.LENGTH_LONG).show();
-                        String locLink = (lastKnownLocation != null) ? "http://maps.google.com/maps?q=" + lastKnownLocation.getLatitude() + "," + lastKnownLocation.getLongitude() : "Location Unknown";
-                        sendSosSms("SAFETY ALERT: Audio evidence saved securely on-device. (Server unreachable). \nLast Known Location: " + locLink);
-                    });
-                    return;
+                if (directAudioUrl == null) {
+                    throw new Exception("Failed to get audio URL from tmpfiles API");
                 }
 
-                // ─── Step 2: Get the public tunnel URL for the SMS link ───
-                // The upload succeeded to LAN; now get the Serveo public URL for sharing
-                String publicEvidenceUrl = null;
-                try {
-                    URL urlApi = new URL(successfulUploadHost + "/url");
-                    HttpURLConnection urlConn = (HttpURLConnection) urlApi.openConnection();
-                    urlConn.setConnectTimeout(4000);
-                    urlConn.setReadTimeout(4000);
-                    if (urlConn.getResponseCode() == 200) {
-                        BufferedReader br = new BufferedReader(new InputStreamReader(urlConn.getInputStream()));
-                        StringBuilder sb = new StringBuilder();
-                        String l;
-                        while ((l = br.readLine()) != null) sb.append(l);
-                        br.close();
-                        JSONObject urlJson = new JSONObject(sb.toString());
-                        String tunnelUrl = urlJson.getString("url");
-                        if (tunnelUrl != null && tunnelUrl.startsWith("https://")) {
-                            publicEvidenceUrl = tunnelUrl + "/evidence/" + evidenceId;
-                        }
-                    }
-                } catch (Exception ignored) {}
-
-                // Fallback: use hardcoded URL
-                if (publicEvidenceUrl == null) {
-                    publicEvidenceUrl = BACKEND_URL + "/evidence/" + evidenceId;
-                }
-
-                final String finalEvidenceUrl = publicEvidenceUrl;
-                String actualIp = (discoveredServerIp != null && !discoveredServerIp.isEmpty()) ? discoveredServerIp : "192.168.0.100";
-                final String localIpUrl = "http://" + actualIp + ":8000/evidence/" + evidenceId; // Direct Wi-Fi Link
-
+                final String finalAudioUrl = directAudioUrl;
+                
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "✅ Evidence Secured!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "✅ Evidence Secured and Uploaded!", Toast.LENGTH_SHORT).show();
                     String locLink = (lastKnownLocation != null) ? "http://maps.google.com/maps?q=" + lastKnownLocation.getLatitude() + "," + lastKnownLocation.getLongitude() : "Location Unknown";
-                    String audioMessage = "⚠️ EMERGENCY SAFETY ALERT ⚠️\n" +
-                                        "My SOS has been triggered. Evidence is secured:\n" +
-                                        "1. 🌍 Live Dashboard: " + finalEvidenceUrl + "\n" +
-                                        "2. 📍 Verified Location: " + locLink + "\n" +
-                                        "3. 📶 Local Network: " + localIpUrl;
-                    sendSosSms(audioMessage);
+                    
+                    String latStr = lastKnownLocation != null ? String.valueOf(lastKnownLocation.getLatitude()) : "0";
+                    String lonStr = lastKnownLocation != null ? String.valueOf(lastKnownLocation.getLongitude()) : "0";
+                    
+                    try {
+                        String encodedAudioUrl = java.net.URLEncoder.encode(finalAudioUrl, "UTF-8");
+                        String dashboardLink = "https://aaravpatil05.github.io/Safety_AI/dashboard.html?lat=" + latStr + "&lon=" + lonStr + "&audio=" + encodedAudioUrl;
+                        
+                        String audioMessage = "SAFETY ALERT: Case secured.\n" +
+                                            "1. Cloud Link: " + dashboardLink + "\n" +
+                                            "2. Direct Wi-Fi: " + dashboardLink + "\n" +
+                                            "3. Verified Location: " + locLink;
+                        sendSosSms(audioMessage);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 });
 
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
                     Toast.makeText(this, "Upload error — evidence saved on device", Toast.LENGTH_LONG).show();
-                    sendSosSms("SAFETY ALERT: Audio evidence secured on-device. (Network error)");
+                    String locLink = (lastKnownLocation != null) ? "http://maps.google.com/maps?q=" + lastKnownLocation.getLatitude() + "," + lastKnownLocation.getLongitude() : "Location Unknown";
+                    
+                    // Fallback to empty audio link if upload fails, but still provide the dashboard link
+                    String latStr = lastKnownLocation != null ? String.valueOf(lastKnownLocation.getLatitude()) : "0";
+                    String lonStr = lastKnownLocation != null ? String.valueOf(lastKnownLocation.getLongitude()) : "0";
+                    String dashboardLink = "https://aaravpatil05.github.io/Safety_AI/dashboard.html?lat=" + latStr + "&lon=" + lonStr;
+                    
+                    String audioMessage = "SAFETY ALERT: Case secured.\n" +
+                                        "1. Cloud Link: " + dashboardLink + "\n" +
+                                        "2. Direct Wi-Fi: " + dashboardLink + "\n" +
+                                        "3. Verified Location: " + locLink;
+                    sendSosSms(audioMessage);
                 });
             }
         }).start();

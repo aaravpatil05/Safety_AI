@@ -77,13 +77,19 @@ public class TrackFragment extends Fragment {
     }
 
     public void updateLocation(Location location) {
-        // Native overlay automatically handles location updates. 
-        // Keeping this method for backward compatibility with MainActivity 
         if (map != null && location != null) {
             GeoPoint point = new GeoPoint(location.getLatitude(), location.getLongitude());
-            if (!mLocationOverlay.isFollowLocationEnabled()) {
-                map.getController().animateTo(point);
+            // Force the map to center on the provided location immediately
+            map.getController().animateTo(point);
+            
+            // Also update the pulse polygon location artificially in case the native overlay hasn't synced
+            if (pulsePolygon == null) {
+                pulsePolygon = new Polygon(map);
+                pulsePolygon.setStrokeWidth(0);
+                map.getOverlays().add(0, pulsePolygon);
             }
+            pulsePolygon.setPoints(Polygon.pointsAsCircle(point, currentRadius));
+            map.invalidate();
         }
     }
 
