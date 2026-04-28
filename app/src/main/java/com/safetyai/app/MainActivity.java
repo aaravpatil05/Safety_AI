@@ -597,9 +597,27 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     public void refreshBackendConnection() {
-        // App is now fully standalone/serverless using tmpfiles.org and GitHub Pages!
-        isServerConnected = true;
-        discoveredServerIp = "Cloud Sync Active";
+        new Thread(() -> {
+            boolean online = false;
+            try {
+                java.net.URL url = new java.net.URL("https://www.google.com");
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(3000);
+                conn.setReadTimeout(3000);
+                conn.connect();
+                online = (conn.getResponseCode() == 200);
+            } catch (Exception e) {
+                online = false;
+            }
+            
+            if (online) {
+                isServerConnected = true;
+                discoveredServerIp = "Cloud Sync Active";
+            } else {
+                isServerConnected = false;
+                discoveredServerIp = "Offline";
+            }
+        }).start();
     }
 
     private boolean pingServer(String host) {

@@ -17,8 +17,10 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Polygon;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
+import org.osmdroid.views.overlay.mylocation.IMyLocationConsumer;
+import org.osmdroid.views.overlay.mylocation.IMyLocationProvider;
 
-public class TrackFragment extends Fragment {
+public class TrackFragment extends Fragment implements IMyLocationProvider {
     private MapView map;
     private MyLocationNewOverlay mLocationOverlay;
     private Polygon pulsePolygon;
@@ -26,6 +28,32 @@ public class TrackFragment extends Fragment {
     private double currentRadius = 10.0;
 
     private GeoPoint lastKnownPoint = null;
+    private IMyLocationConsumer myLocationConsumer;
+
+    @Override
+    public boolean startLocationProvider(IMyLocationConsumer myLocationConsumer) {
+        this.myLocationConsumer = myLocationConsumer;
+        if (lastKnownPoint != null) {
+            Location loc = new Location("Provider");
+            loc.setLatitude(lastKnownPoint.getLatitude());
+            loc.setLongitude(lastKnownPoint.getLongitude());
+            myLocationConsumer.onLocationChanged(loc, this);
+        }
+        return true;
+    }
+
+    @Override
+    public void stopLocationProvider() {
+        this.myLocationConsumer = null;
+    }
+
+    @Override
+    public Location getLastKnownLocation() {
+        return MainActivity.instance != null ? MainActivity.instance.getLastKnownLocation() : null;
+    }
+    
+    @Override
+    public void destroy() {}
 
     private Runnable pulseRunnable = new Runnable() {
         @Override
@@ -74,8 +102,8 @@ public class TrackFragment extends Fragment {
         map.getController().setZoom(15.0);
         map.getController().setCenter(new GeoPoint(22.0, 78.0));
 
-        // Use Native OSMDroid Location Overlay for authentic pulsing tracking dot
-        mLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(ctx), map);
+        // Use Native OSMDroid Location Overlay mapped perfectly to our fast FusedLocation provider!
+        mLocationOverlay = new MyLocationNewOverlay(this, map);
         mLocationOverlay.enableMyLocation();
         mLocationOverlay.enableFollowLocation(); // Automatically center map
         
@@ -98,6 +126,11 @@ public class TrackFragment extends Fragment {
             }
             pulsePolygon.setPoints(Polygon.pointsAsCircle(lastKnownPoint, currentRadius));
             map.invalidate();
+            
+            // Feed the location to the native blue dot!
+            if (myLocationConsumer != null) {
+                myLocationConsumer.onLocationChanged(location, this);
+            }
         }
     }
 
@@ -112,6 +145,9 @@ public class TrackFragment extends Fragment {
             lastKnownPoint = new GeoPoint(loc.getLatitude(), loc.getLongitude());
             if (map != null && map.getController() != null) {
                 map.getController().setCenter(lastKnownPoint);
+            }
+            if (myLocationConsumer != null) {
+                myLocationConsumer.onLocationChanged(loc, this);
             }
         }
         
