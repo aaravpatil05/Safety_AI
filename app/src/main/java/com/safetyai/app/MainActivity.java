@@ -342,13 +342,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             File safetyDir = new File(downloadDir, "SafetyAI");
             if (!safetyDir.exists()) safetyDir.mkdirs();
             
-            audioFilePath = safetyDir.getAbsolutePath() + "/sos_evidence.3gp";
+            audioFilePath = safetyDir.getAbsolutePath() + "/sos_evidence.m4a";
             
             mediaRecorder = new MediaRecorder();
             mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
             mediaRecorder.setOutputFile(audioFilePath);
-            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            mediaRecorder.setAudioEncodingBitRate(128000);
+            mediaRecorder.setAudioSamplingRate(44100);
             mediaRecorder.prepare();
             mediaRecorder.start();
         } catch (Exception e) {
@@ -426,9 +428,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     return;
                 }
 
-                // Upload to tmpfiles.org
+                // Upload to catbox.moe for permanent, direct links without expiration
                 String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
-                URL url = new URL("https://tmpfiles.org/api/v1/upload");
+                URL url = new URL("https://catbox.moe/user/api.php");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setDoOutput(true);
                 conn.setRequestMethod("POST");
@@ -438,10 +440,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                 OutputStream os = conn.getOutputStream();
                 
+                // reqtype field
+                os.write(("--" + boundary + "\r\n").getBytes());
+                os.write(("Content-Disposition: form-data; name=\"reqtype\"\r\n\r\n").getBytes());
+                os.write(("fileupload\r\n").getBytes());
+                
                 // File part
                 os.write(("--" + boundary + "\r\n").getBytes());
-                os.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + audioFile.getName() + "\"\r\n").getBytes());
-                os.write(("Content-Type: application/octet-stream\r\n\r\n").getBytes());
+                os.write(("Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + audioFile.getName() + "\"\r\n").getBytes());
+                os.write(("Content-Type: audio/mp4\r\n\r\n").getBytes());
                 
                 FileInputStream fis = new FileInputStream(audioFile);
                 byte[] buffer = new byte[4096];
@@ -464,16 +471,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     while ((line = br.readLine()) != null) sb.append(line);
                     br.close();
                     
-                    JSONObject json = new JSONObject(sb.toString());
-                    if (json.has("status") && json.getString("status").equals("success")) {
-                        String rawUrl = json.getJSONObject("data").getString("url");
-                        // Convert http://tmpfiles.org/ID/file.3gp to https://tmpfiles.org/dl/ID/file.3gp for direct play
-                        directAudioUrl = rawUrl.replace("tmpfiles.org/", "tmpfiles.org/dl/").replace("http://", "https://");
+                    String rawUrl = sb.toString().trim();
+                    if (rawUrl.startsWith("http")) {
+                        directAudioUrl = rawUrl;
                     }
                 }
 
                 if (directAudioUrl == null) {
-                    throw new Exception("Failed to get audio URL from tmpfiles API");
+                    throw new Exception("Failed to get audio URL from cloud API");
                 }
 
                 final String finalAudioUrl = directAudioUrl;
