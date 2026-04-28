@@ -337,8 +337,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void startAudioRecording() {
         try {
-            // Move to public Downloads folder for easy user access
-            File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            // Use app-specific external directory to completely bypass Android 11+ Scoped Storage restrictions!
+            File downloadDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
             File safetyDir = new File(downloadDir, "SafetyAI");
             if (!safetyDir.exists()) safetyDir.mkdirs();
             
