@@ -597,60 +597,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     public void refreshBackendConnection() {
-        new Thread(() -> {
-            SharedPreferences settingsPrefs = getSharedPreferences("SafetyPrefs", Context.MODE_PRIVATE);
-            String manualIp = settingsPrefs.getString("manual_server_ip", "").trim();
-            
-            String[] commonHosts = {
-                BACKEND_URL,    // Priority 1: Fresh Tunnel
-                manualIp, 
-                discoveredServerIp,
-                "192.168.0.100", // Your Current Home IP
-                "172.20.10.1",   // Apple Hotspot
-                "192.168.43.1",  // Standard Android Hotspot
-                "192.168.1.1",   // Common Home Router
-                "10.0.2.2"       // Emulator
-            };
-
-            for (String ip : commonHosts) {
-                if (ip == null || ip.isEmpty()) continue;
-                String host = ip.startsWith("http") ? ip : "http://" + ip + ":8000";
-                if (pingServer(host)) {
-                    discoveredServerIp = ip.replace("http://", "").replace(":8000", "");
-                    isServerConnected = true;
-                    return;
-                }
-            }
-
-            // --- INTELLIGENT SUBNET SCAN (Detects Current Range) ---
-            String baseIp = "192.168.0.";
-            if (discoveredServerIp != null && discoveredServerIp.contains(".")) {
-                baseIp = discoveredServerIp.substring(0, discoveredServerIp.lastIndexOf(".") + 1);
-            } else {
-                // Try to guess from common ranges if discovery fails
-                String[] commonSubnets = {"10.51.43.", "192.168.0.", "192.168.1.", "172.20.10."};
-                for (String subnet : commonSubnets) {
-                    for (int i = 1; i <= 40; i++) { // Scan first 40 IPs of common subnets
-                        if (pingServer("http://" + subnet + i + ":8000")) {
-                            discoveredServerIp = subnet + i;
-                            isServerConnected = true;
-                            return;
-                        }
-                    }
-                }
-            }
-
-            // General scan for the detected/current subnet
-            for (int i = 1; i <= 50; i++) {
-                String testIp = baseIp + i;
-                if (pingServer("http://" + testIp + ":8000")) {
-                    discoveredServerIp = testIp;
-                    isServerConnected = true;
-                    return;
-                }
-            }
-            isServerConnected = false;
-        }).start();
+        // App is now fully standalone/serverless using tmpfiles.org and GitHub Pages!
+        isServerConnected = true;
+        discoveredServerIp = "Cloud Sync Active";
     }
 
     private boolean pingServer(String host) {

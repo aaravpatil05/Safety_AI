@@ -25,27 +25,35 @@ public class TrackFragment extends Fragment {
     private android.os.Handler pulseHandler = new android.os.Handler();
     private double currentRadius = 10.0;
 
+    private GeoPoint lastKnownPoint = null;
+
     private Runnable pulseRunnable = new Runnable() {
         @Override
         public void run() {
-            if (map != null && mLocationOverlay != null && mLocationOverlay.getMyLocation() != null) {
-                if (pulsePolygon == null) {
-                    pulsePolygon = new Polygon(map);
-                    pulsePolygon.setStrokeWidth(0);
-                    map.getOverlays().add(0, pulsePolygon);
+            if (map != null) {
+                GeoPoint loc = lastKnownPoint;
+                if (loc == null && mLocationOverlay != null) {
+                    loc = mLocationOverlay.getMyLocation();
                 }
-                GeoPoint loc = mLocationOverlay.getMyLocation();
                 
-                currentRadius += 15.0; // Expand pulse
-                if (currentRadius > 1000.0) currentRadius = 10.0; // Reset
-                
-                pulsePolygon.setPoints(Polygon.pointsAsCircle(loc, currentRadius));
-                
-                // Fade out as it expands
-                int alpha = (int) (120 * (1 - (currentRadius / 1000.0)));
-                pulsePolygon.setFillColor(android.graphics.Color.argb(Math.max(0, alpha), 33, 150, 243)); // Glowing Blue
-                
-                map.invalidate();
+                if (loc != null) {
+                    if (pulsePolygon == null) {
+                        pulsePolygon = new Polygon(map);
+                        pulsePolygon.setStrokeWidth(0);
+                        map.getOverlays().add(0, pulsePolygon);
+                    }
+                    
+                    currentRadius += 15.0; // Expand pulse
+                    if (currentRadius > 1000.0) currentRadius = 10.0; // Reset
+                    
+                    pulsePolygon.setPoints(Polygon.pointsAsCircle(loc, currentRadius));
+                    
+                    // Fade out as it expands
+                    int alpha = (int) (120 * (1 - (currentRadius / 1000.0)));
+                    pulsePolygon.setFillColor(android.graphics.Color.argb(Math.max(0, alpha), 33, 150, 243)); // Glowing Blue
+                    
+                    map.invalidate();
+                }
             }
             pulseHandler.postDelayed(this, 30); // ~30fps smooth pulse
         }
@@ -78,9 +86,9 @@ public class TrackFragment extends Fragment {
 
     public void updateLocation(Location location) {
         if (map != null && location != null) {
-            GeoPoint point = new GeoPoint(location.getLatitude(), location.getLongitude());
+            lastKnownPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
             // Force the map to center on the provided location immediately
-            map.getController().animateTo(point);
+            map.getController().animateTo(lastKnownPoint);
             
             // Also update the pulse polygon location artificially in case the native overlay hasn't synced
             if (pulsePolygon == null) {
@@ -88,7 +96,7 @@ public class TrackFragment extends Fragment {
                 pulsePolygon.setStrokeWidth(0);
                 map.getOverlays().add(0, pulsePolygon);
             }
-            pulsePolygon.setPoints(Polygon.pointsAsCircle(point, currentRadius));
+            pulsePolygon.setPoints(Polygon.pointsAsCircle(lastKnownPoint, currentRadius));
             map.invalidate();
         }
     }
@@ -98,6 +106,15 @@ public class TrackFragment extends Fragment {
         super.onResume();
         if (map != null) map.onResume();
         if (mLocationOverlay != null) mLocationOverlay.enableMyLocation();
+        
+        if (MainActivity.instance != null && MainActivity.instance.getLastKnownLocation() != null) {
+            Location loc = MainActivity.instance.getLastKnownLocation();
+            lastKnownPoint = new GeoPoint(loc.getLatitude(), loc.getLongitude());
+            if (map != null && map.getController() != null) {
+                map.getController().setCenter(lastKnownPoint);
+            }
+        }
+        
         pulseHandler.post(pulseRunnable);
     }
 
