@@ -115,7 +115,8 @@ public class TrackFragment extends Fragment implements IMyLocationProvider {
     public void updateLocation(Location location) {
         if (map != null && location != null) {
             lastKnownPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
-            // Force the map to center on the provided location immediately
+            // Force the map to center on the provided location immediately and zoom in
+            map.getController().setZoom(18.0);
             map.getController().animateTo(lastKnownPoint);
             
             // Also update the pulse polygon location artificially in case the native overlay hasn't synced
@@ -144,6 +145,7 @@ public class TrackFragment extends Fragment implements IMyLocationProvider {
             Location loc = MainActivity.instance.getLastKnownLocation();
             lastKnownPoint = new GeoPoint(loc.getLatitude(), loc.getLongitude());
             if (map != null && map.getController() != null) {
+                map.getController().setZoom(18.0);
                 map.getController().setCenter(lastKnownPoint);
             }
             if (myLocationConsumer != null) {

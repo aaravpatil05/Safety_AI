@@ -267,11 +267,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 public void onLocationResult(@NonNull LocationResult locationResult) {
                     if (locationResult == null) return;
                     for (Location location : locationResult.getLocations()) {
-                        // Prevent OnePlus/Android from returning a stale cached location (e.g. from hours ago)
-                        long locationAgeNanos = android.os.SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos();
-                        if (locationAgeNanos > 30_000_000_000L) { // 30 seconds
-                            continue; // Skip cached location, wait for a fresh live GPS fix!
-                        }
+                        // Accept any location immediately so the map doesn't get stuck waiting for a fresh GPS lock indoors
+                        if (location == null) continue;
                         
                         lastKnownLocation = location;
                         
